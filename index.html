@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>מפת הפוסקים הראשונים</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  
+  <!-- Google Fonts for fine Hebrew typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&family=Frank+Ruhl+Libre:wght@500;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      font-family: 'Heebo', sans-serif;
+    }
+    .font-serif-heb {
+      font-family: 'Frank Ruhl Libre', serif;
+    }
+    #map {
+      height: 100%;
+      width: 100%;
+      z-index: 10;
+      background-color: #f1efe8;
+    }
+    /* Custom Marker Styles */
+    .custom-div-icon {
+      background: transparent;
+      border: none;
+    }
+    .marker-pin {
+      width: 38px;
+      height: 38px;
+      border-radius: 50% 50% 50% 0;
+      position: absolute;
+      transform: rotate(-45deg);
+      left: 50%;
+      top: 50%;
+      margin: -20px 0 0 -20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+      border: 2px solid #ffffff;
+      transition: all 0.25s ease;
+    }
+    .marker-pin:hover, .marker-active .marker-pin {
+      transform: rotate(-45deg) scale(1.22);
+      z-index: 1000 !important;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.5);
+    }
+    .marker-content {
+      transform: rotate(45deg);
+      color: white;
+      font-weight: 700;
+      font-size: 13px;
+      line-height: 1;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    }
+    /* Pillar Marker (עמודי הוראה) */
+    .pin-pillar {
+      background: linear-gradient(135deg, #d97706, #b45309);
+      border: 2.5px solid #fef08a !important;
+      animation: pulse-gold 2.5s infinite;
+    }
+    @keyframes pulse-gold {
+      0% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.6); }
+      70% { box-shadow: 0 0 0 10px rgba(217, 119, 6, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0); }
+    }
+    .pin-spain { background: linear-gradient(135deg, #e11d48, #9f1239); }
+    .pin-france { background: linear-gradient(135deg, #2563eb, #1e40af); }
+    .pin-ashkenaz { background: linear-gradient(135deg, #059669, #065f46); }
+    .pin-provence { background: linear-gradient(135deg, #7c3aed, #5b21b6); }
+    .pin-italy-east { background: linear-gradient(135deg, #0891b2, #155e75); }
+
+    /* Custom Leaflet Tooltip */
+    .leaflet-tooltip-custom {
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(4px);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .leaflet-tooltip-custom::before {
+      border-top-color: rgba(15, 23, 42, 0.92) !important;
+    }
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 h-screen flex flex-col overflow-hidden">
+  
+  <!-- Top Navigation Bar -->
+  <header class="bg-slate-900 text-white shadow-md z-30 shrink-0 border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center space-x-reverse space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-serif-heb text-2xl font-bold">
+          ר
+        </div>
+        <div>
+          <h1 class="text-xl font-bold font-serif-heb tracking-wide text-amber-100 flex items-center gap-2">
+            מפת הפוסקים הראשונים
+            <span class="text-xs font-sans px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-medium">המאה ה-11 עד ה-15</span>
+          </h1>
+          <p class="text-xs text-slate-400">מיפוי גיאוגרפי וכרונולוגי של מעצבי ההלכה לתקופותיהם</p>
+        </div>
+      </div>
+
+      <!-- Quick Action Stats & Controls -->
+      <div class="flex items-center gap-2 text-xs">
+        <button id="resetViewBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5 font-medium">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+          איפוס תצוגה
+        </button>
+        <button id="toggleListBtn" class="md:hidden px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-medium transition flex items-center gap-1">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path></svg>
+          רשימת פוסקים
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Filter & Search Bar -->
+  <div class="bg-white border-b border-slate-200 px-4 py-2.5 z-20 shadow-sm shrink-0">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+      <!-- Search Input -->
+      <div class="relative flex-1 max-w-md">
+        <input type="text" id="searchInput" placeholder="חיפוש פוסק, ספר, או עיר..." class="w-full pl-3 pr-9 py-1.5 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition">
+        <svg class="w-4 h-4 text-slate-400 absolute right-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+      </div>
+
+      <!-- Region Pills Filter -->
+      <div class="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 text-xs text-slate-600">
+        <span class="font-bold text-slate-400 pl-1 shrink-0">סינון:</span>
+        <button class="filter-btn active px-2.5 py-1 rounded-full font-medium transition bg-slate-900 text-white shadow-sm" data-region="all">הכל (<span id="count-all">0</span>)</button>
+        <button class="filter-btn px-2.5 py-1 rounded-full font-medium transition bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-300" data-region="pillars">👑 עמודי ההוראה</button>
+        <button class="filter-btn px-2.5 py-1 rounded-full font-medium transition bg-rose-50 text-rose-800 hover:bg-rose-100 border border-rose-200" data-region="ספרד וצפון אפריקה">ספרד וצ' אפריקה</button>
+        <button class="filter-btn px-2.5 py-1 rounded-full font-medium transition bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-200" data-region="צרפת">צרפת (תוספות)</button>
+        <button class="filter-btn px-2.5 py-1 rounded-full font-medium transition bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200" data-region="אשכנז">אשכנז</button>
+        <button class="filter-btn px-2.5 py-1 rounded-full font-medium transition bg-purple-50 text-purple-800 hover:bg-purple-100 border border-purple-200" data-region="פרובנס">פרובנס</button>
+        <button class="filter-btn px-2.5 py-1 rounded-full font-medium transition bg-cyan-50 text-cyan-800 hover:bg-cyan-100 border border-cyan-200" data-region="איטליה והמזרח">איטליה והמזרח</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content Layout (Map + Detail Panel / List) -->
+  <main class="flex-1 relative flex overflow-hidden">
+    
+    <!-- Map Container -->
+    <div class="flex-1 h-full relative">
+      <div id="map"></div>
+
+      <!-- Map Overlay Legend -->
+      <div class="absolute bottom-5 left-4 z-[400] bg-white/95 backdrop-blur-sm p-3 rounded-xl shadow-lg border border-slate-200/80 text-xs hidden sm:block max-w-[210px]">
+        <div class="font-bold text-slate-700 mb-2 border-b pb-1">מקרא אזורי פסיקה</div>
+        <div class="space-y-1.5">
+          <div class="flex items-center gap-2">
+            <span class="w-3.5 h-3.5 rounded-full bg-amber-500 border border-amber-300 ring-2 ring-amber-300/40"></span>
+            <span class="font-medium text-slate-800">עמודי ההוראה</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-3.5 h-3.5 rounded-full bg-rose-600"></span>
+            <span class="text-slate-700">ספרד וצפון אפריקה</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-3.5 h-3.5 rounded-full bg-blue-600"></span>
+            <span class="text-slate-700">צרפת (בעלי התוספות)</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-3.5 h-3.5 rounded-full bg-emerald-600"></span>
+            <span class="text-slate-700">אשכנז (גרמניה)</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-3.5 h-3.5 rounded-full bg-purple-600"></span>
+            <span class="text-slate-700">פרובנס (דרום צרפת)</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-3.5 h-3.5 rounded-full bg-cyan-600"></span>
+            <span class="text-slate-700">איטליה וארץ ישראל</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar / Drawer: Scholar Profile or Filtered List -->
+    <aside id="sidebar" class="w-full md:w-96 bg-white border-r border-slate-200 shadow-xl z-20 flex flex-col transition-all duration-300 absolute md:static inset-y-0 right-0 transform translate-x-full md:translate-x-0">
+      
+      <!-- Drawer Header with Tabs -->
+      <div class="border-b border-slate-200 bg-slate-50 p-3 flex items-center justify-between">
+        <div class="flex items-center gap-1 bg-slate-200/80 p-0.5 rounded-lg text-xs font-semibold">
+          <button id="tabDetailBtn" class="px-3 py-1 rounded-md bg-white text-slate-800 shadow-xs">כרטיס פוסק</button>
+          <button id="tabListBtn" class="px-3 py-1 rounded-md text-slate-600 hover:text-slate-800">רשימה מלאה (<span id="listCounter">0</span>)</button>
+        </div>
+        <button id="closeSidebarBtn" class="md:hidden p-1.5 rounded-lg hover:bg-slate-200 text-slate-500">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <!-- TAB 1: Single Scholar Detail View -->
+      <div id="detailView" class="flex-1 overflow-y-auto p-5">
+        <div id="emptyDetailPrompt" class="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400">
+          <div class="w-16 h-16 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center mb-3 text-slate-300">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+          </div>
+          <h3 class="font-bold text-slate-600 text-base mb-1">בחר פוסק על המפה</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">לחץ על אחד הסמנים במפה או בחר מתוך הרשימה לקבלת פירוט מקיף, חיבוריו ההלכתיים ומקומו בשושלת הפסיקה.</p>
+        </div>
+
+        <div id="scholarCard" class="hidden space-y-4">
+          <!-- Banner Tag & Title -->
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-1.5">
+              <span id="cardBadge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider"></span>
+              <span id="cardYears" class="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded"></span>
+            </div>
+            <h2 id="cardName" class="text-2xl font-serif-heb font-bold text-slate-900 leading-tight"></h2>
+            <div id="cardFullName" class="text-xs text-slate-500 font-medium mt-0.5"></div>
+          </div>
+
+          <!-- Location & Century Info -->
+          <div class="bg-slate-50 rounded-xl p-3 border border-slate-200/70 text-xs space-y-2">
+            <div class="flex items-center gap-2 text-slate-700">
+              <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+              <span><strong>עיר ומרכז:</strong> <span id="cardCity"></span></span>
+            </div>
+            <div class="flex items-center gap-2 text-slate-700">
+              <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+              <span><strong>תקופה:</strong> <span id="cardCentury"></span></span>
+            </div>
+          </div>
+
+          <!-- Major Halachic Works -->
+          <div>
+            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5 text-amber-600" fill="currentColor" viewBox="0 0 20 20"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z"></path></svg>
+              חיבורים הלכתיים בולטים
+            </h4>
+            <div id="cardBooks" class="space-y-1.5"></div>
+          </div>
+
+          <!-- Halachic Impact Description -->
+          <div>
+            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">משקל ומעמד הלכתי</h4>
+            <p id="cardDescription" class="text-xs text-slate-700 leading-relaxed bg-amber-50/50 p-3 rounded-lg border border-amber-200/60"></p>
+          </div>
+
+          <!-- Lineage / Relations -->
+          <div id="cardLineageBox" class="text-xs text-slate-600 pt-2 border-t border-slate-100">
+            <span class="font-bold text-slate-700">קשרים ותלמידים:</span>
+            <span id="cardLineage" class="text-slate-600"></span>
+          </div>
+
+          <!-- Action: Center Map -->
+          <button id="focusOnMapBtn" class="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition shadow-sm flex items-center justify-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+            התמקד במפה
+          </button>
+        </div>
+      </div>
+
+      <!-- TAB 2: Full Filterable List View -->
+      <div id="listView" class="flex-1 overflow-y-auto p-3 hidden space-y-2">
+        <div id="scholarsListContainer" class="space-y-2"></div>
+      </div>
+
+    </aside>
+
+  </main>
+
+  <script>
+    /**
+     * Database of Major Rishonim (Early Authorities)
+     * Coordinates represent their primary historical center of activity.
+     */
+    const RISHONIM = [
+      // === שלושת עמודי ההוראה ===
+      {
+        id: "rif",
+        name: "הרי\"ף",
+        fullName: "רבי יצחק בן יעקב אלפסי",
+        years: "1013 – 1103",
+        century: "המאה ה-11",
+        region: "ספרד וצפון אפריקה",
+        isPillar: true,
+        city: "לוקנה / פאס (ספרד / מרוקו)",
+        lat: 37.4087,
+        lng: -4.4856,
+        books: [
+          { title: "הלכות רב אלפס (הש\"ס הקטן)", desc: "תמצית מסקנות הגמרא להלכה למעשה, השמיט משא ומתן והלכות שאינן נוהגות בזמן הזה." }
+        ],
+        description: "עמוד ההוראה הראשון לשולחן ערוך. הרי\"ף הביא את מורשת הגאונים לספרד וקבע את דרך הפסיקה המתבססת ישירות על תמצות הדינים מן הש\"ס.",
+        lineage: "רבותיו: רב נסים גאון ורבנו חננאל מקירואן. מגדולי תלמידיו: ר\"י מיגאש."
+      },
+      {
+        id: "rambam",
+        name: "הרמב\"ם",
+        fullName: "רבי משה בן מימון (הנשר הגדול)",
+        years: "1138 – 1204",
+        century: "המאה ה-12",
+        region: "ספרד וצפון אפריקה",
+        isPillar: true,
+        city: "פוסטאט / קהיר וקורדובה (מצרים / ספרד)",
+        lat: 30.0074,
+        lng: 31.2334,
+        books: [
+          { title: "משנה תורה (הי\"ד החזקה)", desc: "הקודקס ההלכתי המקיף והשיטתי ביותר, הכולל 14 כרכים על כל התורה כולה בלשון עברית צחה." },
+          { title: "ספר המצוות", desc: "מניין תרי\"ג המצוות וכלליהן." },
+          { title: "פירוש המשניות ושו\"ת הרמב\"ם", desc: "כולל הקדמות יסודיות באמונה והלכה." }
+        ],
+        description: "עמוד ההוראה השני. הפוסק המרכזי ביותר ביהדות המזרח, תימן וספרד. קביעתו מהווה אבן יסוד בשולחן ערוך.",
+        lineage: "למד מאביו רבי מימון הדיין (תלמיד ר\"י מיגאש). בנו: רבי אברהם בן הרמב\"ם."
+      },
+      {
+        id: "rosh",
+        name: "הרא\"ש",
+        fullName: "רבנו אשר בן יחיאל",
+        years: "1250 – 1327",
+        century: "המאה ה-13 וה-14",
+        region: "אשכנז",
+        isPillar: true,
+        city: "טולדו וקלן/וורמס (ספרד / גרמניה)",
+        lat: 39.8628,
+        lng: -4.0273,
+        books: [
+          { title: "פסקי הרא\"ש", desc: "פסקים על סדר מסכתות הש\"ס, משלבים את שיטת התוספות מאשכנז עם מסורת הרי\"ף." },
+          { title: "שו\"ת הרא\"ש", desc: "אלפי תשובות מנומקות שהשפיעו עמוקות על המשפט העברי." }
+        ],
+        description: "עמוד ההוראה השלישי. שימש גשר ענק בין פסיקת חכמי אשכנז ובעלי התוספות לבין עולם התורה הספרדי, לאחר שנמלט מגרמניה לספרד.",
+        lineage: "תלמידו המובהק של המהר\"ם מרוטנבורג. בניו: רבי יעקב (בעל הטורים) ורבי יהודה."
+      },
+
+      // === ספרד וצפון אפריקה ===
+      {
+        id: "ri-migash",
+        name: "ר\"י מיגאש",
+        fullName: "רבי יוסף הלוי אבן מיגאש",
+        years: "1077 – 1141",
+        century: "המאה ה-12",
+        region: "ספרד וצפון אפריקה",
+        isPillar: false,
+        city: "לוקנה / אליסנה (ספרד)",
+        lat: 37.4095,
+        lng: -4.4820,
+        books: [
+          { title: "חידושי ר\"י מיגאש", desc: "חידושים על מסכתות בבא בתרא ושבועות." },
+          { title: "שו\"ת ר\"י מיגאש", desc: "תשובות עמוקות בדיני ממונות ואישות." }
+        ],
+        description: "תלמידו הגדול של הרי\"ף. הרמב\"ם כתב עליו בהקדמת פירוש המשנה: 'כי לב אותו האיש בהלכה יבהיל כל מי שיסתכל בדבריו... וכמעט לא קם כמוהו'.",
+        lineage: "תלמיד הרי\"ף, רבו של רבי מימון (אבי הרמב\"ם)."
+      },
+      {
+        id: "ramban",
+        name: "הרמב\"ן",
+        fullName: "רבי משה בן נחמן (נחמני)",
+        years: "1194 – 1270",
+        century: "המאה ה-13",
+        region: "ספרד וצפון אפריקה",
+        isPillar: false,
+        city: "גירונה (ספרד) / עכו וירושלים",
+        lat: 41.9831,
+        lng: 2.8249,
+        books: [
+          { title: "תורת האדם", desc: "הלכות אבלות, רפואה, קבורה ושער הגמול." },
+          { title: "מלחמות ה' וספר הזכות", desc: "הגנה מזהירה על הלכות הרי\"ף מפני השגות בעל המאור והראב\"ד." },
+          { title: "חידושי הרמב\"ן לש\"ס", desc: "אבן יסוד בלמדנות העיונית עד ימינו." }
+        ],
+        description: "מגדולי מנהיגי ספרד ופוסקיה. שילב בין למדנות בעלי התוספות לעומק הספרדי. בסוף ימיו עלה לארץ ישראל וחידש את היישוב בירושלים.",
+        lineage: "רבותיו: רבי יהודה בר יקר ורבי נתן בן מאיר. תלמידיו: הרשב\"א והרא\"ה."
+      },
+      {
+        id: "rashba",
+        name: "הרשב\"א",
+        fullName: "רבי שלמה בן אברהם אדרת",
+        years: "1235 – 1310",
+        century: "המאה ה-13",
+        region: "ספרד וצפון אפריקה",
+        isPillar: false,
+        city: "ברצלונה (ספרד)",
+        lat: 41.3874,
+        lng: 2.1686,
+        books: [
+          { title: "תורת הבית (הארוך והקצר)", desc: "הלכות איסור והיתר, נידה, שחיטה והכשרת כלים." },
+          { title: "עבודת הקודש", desc: "הלכות שבת ומועדים." },
+          { title: "שו\"ת הרשב\"א (שבעה חלקים)", desc: "אלפי תשובות הלכתיות שנשלחו לכל תפוצות ישראל." }
+        ],
+        description: "מגדולי המשיבים בהלכה בכל הזמנים. ספריו ההלכתיים ותשובותיו הם מעמודי התווך של הטור והשולחן ערוך, במיוחד בחלק יורה דעה.",
+        lineage: "תלמידו של הרמב\"ן ורבנו יונה. תלמידו הבולט: הריטב\"א."
+      },
+      {
+        id: "rabbeinu-yona",
+        name: "רבנו יונה מגירונדי",
+        fullName: "רבי יונה בן אברהם מגירונדי (החסיד)",
+        years: "1200 – 1263",
+        century: "המאה ה-13",
+        region: "ספרד וצפון אפריקה",
+        isPillar: false,
+        city: "גירונה וטולדו (ספרד)",
+        lat: 41.9840,
+        lng: 2.8210,
+        books: [
+          { title: "חידושי רבנו יונה על הרי\"ף", desc: "בפרט במסכת ברכות." },
+          { title: "שערי תשובה", desc: "ספר יסוד בהלכות תשובה, תיקון המידות ויראת שמים." }
+        ],
+        description: "הוגה ופוסק מחסידי ספרד, מורם של הרשב\"א והרא\"ה. תורתו ההלכתית נשמרה בפירושיו לרי\"ף ובתשובות תלמידיו.",
+        lineage: "בן דודו של הרמב\"ן; למד בפקולטה של בעלי התוספות באיוורה (צרפת)."
+      },
+      {
+        id: "ritva",
+        name: "הריטב\"א",
+        fullName: "רבי יום טוב בן אברהם אלאשבילי",
+        years: "1260 – 1320",
+        century: "המאה ה-13 וה-14",
+        region: "ספרד וצפון אפריקה",
+        isPillar: false,
+        city: "סביליה (ספרד)",
+        lat: 37.3891,
+        lng: -5.9845,
+        books: [
+          { title: "חידושי הריטב\"א", desc: "פירוש מעמיק למסכתות הש\"ס המוזכר תדיר בפסיקה." },
+          { title: "הלכות ברכות", desc: "פסקי הלכות ממוקדים." }
+        ],
+        description: "מגדולי מפרשי הש\"ס וההלכה בספרד. נודע בדיוקו הלשוני וביכולתו לתמצת סוגיות סבוכות לפסק הלכתי מובהק.",
+        lineage: "תלמידם המובהק של הרשב\"א והרא\"ה."
+      },
+      {
+        id: "ran",
+        name: "הר\"ן",
+        fullName: "רבנו נסים בן ראובן מגירונדי",
+        years: "1315 – 1376",
+        century: "המאה ה-14",
+        region: "ספרד וצפון אפריקה",
+        isPillar: false,
+        city: "ברצלונה (ספרד)",
+        lat: 41.3850,
+        lng: 2.1734,
+        books: [
+          { title: "פירוש הר\"ן על הרי\"ף", desc: "הפירוש הנלמד ביותר על דפי הרי\"ף (בפרט בנדרים, גיטין וחולין)." },
+          { title: "דרשות הר\"ן", desc: "סוגיות מחשבה והנהגה הלכתית." },
+          { title: "שו\"ת הר\"ן", desc: "תשובות מקיפות שנשלחו לקהילות רבות." }
+        ],
+        description: "מנהיגה של יהדות ספרד במאה ה-14. פירושו לרי\"ף הפך לחלק בלתי נפרד מלימוד הש\"ס והפסיקה המעשית.",
+        lineage: "תלמידו המובהק: הריב\"ש."
+      },
+      {
+        id: "rivash",
+        name: "הריב\"ש",
+        fullName: "רבי יצחק בר ששת ברפת",
+        years: "1326 – 1408",
+        century: "המאה ה-14",
+        region: "ספרד וצפון אפריקה",
+        isPillar: false,
+        city: "ולנסיה (ספרד) ואלג'יר",
+        lat: 36.7538,
+        lng: 3.0588,
+        books: [
+          { title: "שו\"ת הריב\"ש", desc: "למעלה מ-500 תשובות הלכתיות מקיפות המשמשות מקור ראשון במעלה בבית יוסף." }
+        ],
+        description: "נמלט מגזרות קנ\"א (1391) מספרד לאלג'יריה וכיהן שם כרב ראשי. תשובותיו נחשבות לאבן בוחן בסוגיות אישות, ממונות ומנהגים.",
+        lineage: "תלמיד הר\"ן ורבי חסדאי קרשקש."
+      },
+      {
+        id: "tur",
+        name: "בעל הטורים",
+        fullName: "רבנו יעקב בן אשר",
+        years: "1269 – 1343",
+        century: "המאה ה-14",
+        region: "ספרד וצפון אפריקה",
+        isPillar: false,
+        city: "טולדו (ספרד)",
+        lat: 39.8568,
+        lng: -4.0245,
+        books: [
+          { title: "ארבעה טורים", desc: "החלוקה המהפכנית של ההלכה ל-4 חלקים: אורח חיים, יורה דעה, אבן העזר, חושן משפט." },
+          { title: "קיצור פסקי הרא\"ש", desc: "תמצות פסיקות אביו." }
+        ],
+        description: "עיצב את מבנה ההלכה שעל פיו בנויים 'בית יוסף' וה'שולחן ערוך' עד ימינו אנו. שילב באופן מלא את מסורות אשכנז וספרד.",
+        lineage: "בנו של הרא\"ש."
+      },
+
+      // === צרפת (בעלי התוספות) ===
+      {
+        id: "rashi",
+        name: "רש\"י",
+        fullName: "רבי שלמה בן יצחק",
+        years: "1040 – 1105",
+        century: "המאה ה-11",
+        region: "צרפת",
+        isPillar: false,
+        city: "טרואה / טרוייש (Troyes, צרפת)",
+        lat: 48.2973,
+        lng: 4.0744,
+        books: [
+          { title: "פירוש רש\"י לתלמוד", desc: "הפירוש היסודי שבלעדיו הגמרא כספר חתום." },
+          { title: "ספרי דבי רש\"י (הפרדס, מחזור ויטרי, האורה)", desc: "פסקים ותשובות שנאספו בידי תלמידיו." }
+        ],
+        description: "רבם של כל בני הגולה. מעבר לפירושו המהפכני, פסקיו ורבותיו בוורמס ומגנצא הניחו את התשתית למנהגי אשכנז וצרפת.",
+        lineage: "תלמיד חכמי מגנצא (רבי יעקב בר יקר). נכדיו: רשב\"ם ורבנו תם."
+      },
+      {
+        id: "rabbeinu-tam",
+        name: "רבנו תם",
+        fullName: "רבי יעקב בן מאיר",
+        years: "1100 – 1171",
+        century: "המאה ה-12",
+        region: "צרפת",
+        isPillar: false,
+        city: "רמרו וטרואה (Ramerupt, צרפת)",
+        lat: 48.5190,
+        lng: 4.2930,
+        books: [
+          { title: "ספר הישר (חלק ההלכות והתשובות)", desc: "בירורי סוגיות ופסקים הלכתיים מובהקים." },
+          { title: "תוספות רבנו תם", desc: "הבסיס לחלק ניכר מתוספות התלמוד." }
+        ],
+        description: "מנהיגם הגדול של בעלי התוספות בדור השני. קביעותיו (כגון זמן בין השמשות ושיטת תפילין דרבנו תם) הפכו לנכסי צאן ברזל בפסיקה.",
+        lineage: "נכדו של רש\"י ואחיו של הרשב\"ם."
+      },
+      {
+        id: "ri-dampierre",
+        name: "ר\"י הזקן",
+        fullName: "רבי יצחק בן שמואל מדמפייר",
+        years: "1115 – 1184",
+        century: "המאה ה-12",
+        region: "צרפת",
+        isPillar: false,
+        city: "דמפייר (Dampierre, צרפת)",
+        lat: 48.5147,
+        lng: 4.3644,
+        books: [
+          { title: "פסקי ותוספות ר\"י", desc: "עיקר עורכם ומוסרם של דברי בעלי התוספות על הש\"ס." }
+        ],
+        description: "העמיד עשרות מגדולי בעלי התוספות ('שישים גיבורים'). דעותיו ההלכתיות והכרעותיו במחלוקות רבותיו הן הבסיס למנהגי אשכנז וצרפת.",
+        lineage: "אחיינו של רבנו תם ונינו של רש\"י. תלמידו: ר\"ש משאנץ והסמ\"ג."
+      },
+      {
+        id: "smag",
+        name: "הסמ\"ג",
+        fullName: "רבי משה בן יעקב מקוצי",
+        years: "1200 – 1260",
+        century: "המאה ה-13",
+        region: "צרפת",
+        isPillar: false,
+        city: "קוסי (Coucy, צרפת)",
+        lat: 49.5204,
+        lng: 3.3218,
+        books: [
+          { title: "ספר מצוות גדול (סמ\"ג)", desc: "סיווג ההלכה לפי מצוות עשה ומצוות לא תעשה, תוך שילוב פסקי הרמב\"ם עם מנהגי צרפת." }
+        ],
+        description: "סייר בספרד ובפרובנס כדי לחזק את שמירת המצוות (הנחת תפילין ואיסור נישואי תערובת). ספרו צוטט תדיר על ידי הרא\"ש והטור.",
+        lineage: "מבעלי התוספות, תלמיד רבי יהודה שירליאון."
+      },
+      {
+        id: "smak",
+        name: "הסמ\"ק",
+        fullName: "רבי יצחק בן יוסף מקורביל (בעל החוטם)",
+        years: "נפטר 1280",
+        century: "המאה ה-13",
+        region: "צרפת",
+        isPillar: false,
+        city: "קורביל (Corbeil, צרפת)",
+        lat: 48.6144,
+        lng: 2.4828,
+        books: [
+          { title: "ספר מצוות קטן (עמודי גולה)", desc: "חלוקת המצוות לשבעה ימי השבוע לצורך לימוד ושינון יומיומי." }
+        ],
+        description: "מגדולי חכמי צרפת המאוחרים. ספרו התקבל באהדה עצומה ונפוץ בקהילות רבות כספר יסוד להלכה מעשית.",
+        lineage: "חתנו של רבי יחיאל מפריז."
+      },
+
+      // === אשכנז (גרמניה) ===
+      {
+        id: "rabbeinu-gershom",
+        name: "רבנו גרשום",
+        fullName: "רבנו גרשום מאור הגולה",
+        years: "960 – 1028",
+        century: "המאה ה-10 וה-11",
+        region: "אשכנז",
+        isPillar: false,
+        city: "מגנצא / מיינץ (Mainz, גרמניה)",
+        lat: 49.9929,
+        lng: 8.2473,
+        books: [
+          { title: "חרמות ותקנות רבנו גרשום", desc: "איסור פוליגמיה (ריבוי נשים), איסור גירוש אישה בעל כורחה, ואיסור פתיחת מכתבים." },
+          { title: "פירוש רבנו גרשום לש\"ס", desc: "קונטרסי מגנצא שקדמו לרש\"י." }
+        ],
+        description: "מייסד הישיבות באשכנז ומעצב חיי הקהילה היהודית באירופה. תקנותיו המהפכניות הפכו לחוק מחייב בכל תפוצות ישראל.",
+        lineage: "רבם של רבותיו של רש\"י (רבי יעקב בר יקר ורבי יצחק הלוי)."
+      },
+      {
+        id: "ravyah",
+        name: "הראבי\"ה",
+        fullName: "רבי אליעזר בן יואל הלוי",
+        years: "1140 – 1225",
+        century: "המאה ה-12 וה-13",
+        region: "אשכנז",
+        isPillar: false,
+        city: "קלן / בון (גרמניה)",
+        lat: 50.9375,
+        lng: 6.9603,
+        books: [
+          { title: "ספר ראבי\"ה (אבי\"ה)", desc: "חיבור הלכתי רחב היקף המשלב פסיקה מעשית עם בירור שיטתי של סוגיות הש\"ס." }
+        ],
+        description: "מגדולי פוסקי אשכנז הקדומים. ספרו היווה מקור השראה וציטוט מרכזי ביותר לרא\"ש, למרדכי ולאור זרוע.",
+        lineage: "נכדו של הראב\"ן (רבי אליעזר בן נתן)."
+      },
+      {
+        id: "roqeah",
+        name: "הרוקח",
+        fullName: "רבי אלעזר בן יהודה מוורמייזא",
+        years: "1176 – 1238",
+        century: "המאה ה-12 וה-13",
+        region: "אשכנז",
+        isPillar: false,
+        city: "וורמס / ורמייזא (Worms, גרמניה)",
+        lat: 49.6350,
+        lng: 8.3610,
+        books: [
+          { title: "ספר הרוקח", desc: "הלכות יומיומיות, שבת ומועדים בשילוב טעמי מצוות, תורת הסוד וחסידות." }
+        ],
+        description: "אחרון מנהיגי 'חסידי אשכנז'. איחד בין עמקות ההלכה לפרישות וסוד, ופסקיו עיצבו מנהגים רבים המובאים ברמ\"א.",
+        lineage: "תלמידו של רבי יהודה החסיד."
+      },
+      {
+        id: "maharam",
+        name: "המהר\"ם מרוטנבורג",
+        fullName: "רבי מאיר בן ברוך מרוטנבורג",
+        years: "1215 – 1293",
+        century: "המאה ה-13",
+        region: "אשכנז",
+        isPillar: false,
+        city: "רוטנבורג על הטאובר (גרמניה)",
+        lat: 49.3773,
+        lng: 10.1802,
+        books: [
+          { title: "שו\"ת המהר\"ם", desc: "מאות תשובות הלכתיות שעיצבו את דמותה של יהדות אשכנז." },
+          { title: "מנהגי מהר\"ם", desc: "תיעוד הנהגותיו המדוקדקות על ידי תלמידיו." }
+        ],
+        description: "גדול פוסקי אשכנז במאה ה-13. נכלא במבצר אנסיסהיים וסירב שייפדו אותו בממון רב כדי לא להרגיל את השלטונות לסחוט יהודים.",
+        lineage: "רבם המובהק של הרא\"ש, המרדכי ותשב\"ץ קטן."
+      },
+      {
+        id: "mordechai",
+        name: "המרדכי",
+        fullName: "רבי מרדכי בן הלל הכהן",
+        years: "1240 – 1298",
+        century: "המאה ה-13",
+        region: "אשכנז",
+        isPillar: false,
+        city: "נירנברג (גרמניה)",
+        lat: 49.4521,
+        lng: 11.0767,
+        books: [
+          { title: "ספר המרדכי", desc: "אנציקלופדיה הלכתית ענקית על סדר מסכתות הרי\"ף, המלקטת את תורת חכמי צרפת ואשכנז." }
+        ],
+        description: "מקור עיקרי ביותר לפסקי הרמ\"א בהגהותיו על השולחן ערוך. נהרג על קידוש השם בפרעות רינדפלייש.",
+        lineage: "תלמידו של המהר\"ם מרוטנבורג וקרוב משפחתו של הרא\"ש."
+      },
+      {
+        id: "maharil",
+        name: "המהרי\"ל",
+        fullName: "רבי יעקב בן משה מולין (אבי מנהגי אשכנז)",
+        years: "1365 – 1427",
+        century: "המאה ה-14 וה-15",
+        region: "אשכנז",
+        isPillar: false,
+        city: "מגנצא ווורמס (גרמניה)",
+        lat: 49.9980,
+        lng: 8.2520,
+        books: [
+          { title: "ספר מנהגי מהרי\"ל", desc: "תיעוד מדויק של מנהגי התפילה, המועדים וסדרי החיים באשכנז." },
+          { title: "שו\"ת מהרי\"ל", desc: "הכרעות בדיני שבת, אבלות ואיסור והיתר." }
+        ],
+        description: "מכונה 'אבי מנהגי אשכנז'. הרמ\"א קבע את עיקרי מנהגי האשכנזים בשולחן ערוך לפי עדותו והוראותיו של המהרי\"ל.",
+        lineage: "תלמידו של רבי שלום מנוישטאדט. רבו של רבי ישראל איסרלן."
+      },
+      {
+        id: "terumat-hadeshen",
+        name: "תרומת הדשן",
+        fullName: "רבי ישראל איסרלן",
+        years: "1390 – 1460",
+        century: "המאה ה-15",
+        region: "אשכנז",
+        isPillar: false,
+        city: "וינר נוישטאדט (Wiener Neustadt, אוסטריה)",
+        lat: 47.8130,
+        lng: 16.2422,
+        books: [
+          { title: "תרומת הדשן", desc: "שנ\"ד (354) שאלות ותשובות הלכתיות מנוסחות בדייקנות מופלאה." },
+          { title: "פסקים וכתבים", desc: "הלכות מנהג והכרעות במחלוקות." }
+        ],
+        description: "אחרון גדולי הראשונים באשכנז. ספרו מהווה את הבסיס הישיר והמכריע ביותר של הגהות הרמ\"א על השולחן ערוך.",
+        lineage: "מממשיכי דרכו של המהרי\"ל."
+      },
+
+      // === פרובנס (דרום צרפת) ===
+      {
+        id: "rabad-3",
+        name: "הראב\"ד השלישי",
+        fullName: "רבי אברהם בן דוד מפוזקייר",
+        years: "1125 – 1198",
+        century: "המאה ה-12",
+        region: "פרובנס",
+        isPillar: false,
+        city: "פוזקייר / וובאר (Posquières / Vauvert, דרום צרפת)",
+        lat: 43.6938,
+        lng: 4.2755,
+        books: [
+          { title: "השגות הראב\"ד על הרמב\"ם", desc: "הביקורת הלמדנית החריפה והמשפיעה ביותר על משנה תורה, המודפסת לצד הרמב\"ם." },
+          { title: "בעלי הנפש", desc: "חיבור יסוד מקיף בדיני נידה וטהרה." },
+          { title: "השגות על הרי\"ף ובעל המאור", desc: "בירורי הלכה מעמיקים." }
+        ],
+        description: "מגדולי המעמיקים בכל הדורות ומראשי חכמי פרובנס. פסקיו והשגותיו הם חלק בלתי נפרד מכל דיון הלכתי עד ימינו.",
+        lineage: "חתנו של הראב\"ד השני (רבי אברהם בן יצחק מנרבונה, בעל ספר האשכול)."
+      },
+      {
+        id: "baal-hamaor",
+        name: "בעל המאור",
+        fullName: "רבי זרחיה הלוי (הרז\"ה)",
+        years: "1125 – 1186",
+        century: "המאה ה-12",
+        region: "פרובנס",
+        isPillar: false,
+        city: "לוניל ומונפלייה (צרפת)",
+        lat: 43.6766,
+        lng: 4.1350,
+        books: [
+          { title: "המאור הקטן והמאור הגדול", desc: "השגות ודיוקים עיוניים על הלכות הרי\"ף, המודפסים בכל מהדורות הש\"ס." },
+          { title: "ספר הצבא", desc: "כללים במידות שהתורה נדרשת בהן." }
+        ],
+        description: "נודע בביקורתו החדה והבלתי תלויה על דברי הרי\"ף, שהביאה בעקבותיה את ספרי המגן של הרמב\"ן ('מלחמות ה'').",
+        lineage: "מיוחס לזרע זרחיה נכד דוד המלך."
+      },
+      {
+        id: "meiri",
+        name: "המאירי",
+        fullName: "רבי מנחם בן שלמה המאירי",
+        years: "1249 – 1315",
+        century: "המאה ה-13 וה-14",
+        region: "פרובנס",
+        isPillar: false,
+        city: "פרפיניאן (Perpignan, פרובנס)",
+        lat: 42.6986,
+        lng: 2.8956,
+        books: [
+          { title: "בית הבחירה לש\"ס", desc: "אנציקלופדיה למדנית מופלאה המסכמת את שיטות כל הגאונים והראשונים לפי פסיקה הלכתית." },
+          { title: "חיבור התשובה וקרית ספר", desc: "ספרי הלכה בדיני תשובה וסת\"ם." }
+        ],
+        description: "נודע בכינויו 'המפרש האולטימטיבי'. סגנונו בהיר וקלאסי, ומתאפיין בכינויי כבוד ייחודיים לכל ראשון (למשל: 'גדולי המפרשים' על רש\"י).",
+        lineage: "תלמידו של רבי ראובן בן חיים."
+      },
+
+      // === איטליה והמזרח / ארץ ישראל ===
+      {
+        id: "shibolei-haleket",
+        name: "שבולי הלקט",
+        fullName: "רבי צדקיה בן אברהם הרופא",
+        years: "1210 – 1280",
+        century: "המאה ה-13",
+        region: "איטליה והמזרח",
+        isPillar: false,
+        city: "רומא (איטליה)",
+        lat: 41.9028,
+        lng: 12.4964,
+        books: [
+          { title: "שבולי הלקט", desc: "חיבור הלכתי מרכזי על ענייני תפילה, שבת, מועדים וברכות על פי מנהגי איטליה." }
+        ],
+        description: "מגדולי פוסקי איטליה. ליקט מפסיקות גאוני בבל וחכמי אשכנז וצרפת, והביא עדויות יקרות ערך על מנהגי יהדות רומא הקדומה.",
+        lineage: "ממשפחת הענווים המיוחסת ברומא."
+      },
+      {
+        id: "mahrik",
+        name: "המהריק\"ו",
+        fullName: "רבי יוסף בן שלמה קולון",
+        years: "1420 – 1480",
+        century: "המאה ה-15",
+        region: "איטליה והמזרח",
+        isPillar: false,
+        city: "פביה ובולוניה (איטליה)",
+        lat: 45.1847,
+        lng: 9.1582,
+        books: [
+          { title: "שו\"ת מהרי\"ק", desc: "שורשים ותשובות בעומק הסוגיות המשפטיות בדיני ממונות, חזקות והנהגת הציבור." }
+        ],
+        description: "מגדולי הפוסקים באיטליה בשלהי ימי הראשונים. עיונו העמוק ומסקנותיו הובאו מאות פעמים ב'בית יוסף' וזכו להערצה עיוורת.",
+        lineage: "רבו של רבי עובדיה מברטנורא."
+      },
+      {
+        id: "bartenura",
+        name: "רבי עובדיה מברטנורא",
+        fullName: "רבי עובדיה ירא מברטנורא (הרע\"ב)",
+        years: "1445 – 1515",
+        century: "המאה ה-15 וה-16",
+        region: "איטליה והמזרח",
+        isPillar: false,
+        city: "ברטנורו (איטליה) וירושלים",
+        lat: 31.7767,
+        lng: 35.2345,
+        books: [
+          { title: "פירוש הרע\"ב למשנה", desc: "הפירוש המוסמך והפופולרי ביותר על כל ששת סדרי משנה." },
+          { title: "איגרות מארץ ישראל", desc: "תיעוד החיים וההלכה בארץ ישראל." }
+        ],
+        description: "מנהיג היישוב היהודי בירושלים בשלהי תקופת הראשונים וראשית תקופת האחרונים. חיבר את פרשנות המשנה על בסיס הרמב\"ם ורש\"י.",
+        lineage: "תלמידו של מהר\"י קולון באיטליה."
+      }
+    ];
+
+    // Center map around the Mediterranean Basin
+    const map = L.map('map', {
+      center: [42.5, 9.5],
+      zoom: 5,
+      minZoom: 4,
+      maxZoom: 10,
+      zoomControl: false
+    });
+
+    // Add Zoom Control at top-right
+    L.control.zoom({ position: 'topright' }).addTo(map);
+
+    // Esri & Google XYZ raster tiles - zero API keys required, no referer blocks, and no watermarks
+    const esriTopoLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 18,
+      attribution: 'Tiles &copy; Esri'
+    });
+
+    const esriStreetLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 18,
+      attribution: 'Tiles &copy; Esri'
+    });
+
+    const googleRoadsLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+      maxZoom: 20,
+      attribution: '&copy; Google'
+    });
+
+    const osmFrLayer = L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
+      maxZoom: 20,
+      attribution: '&copy; OpenStreetMap France'
+    });
+
+    // Set Esri Topo as default - looks authentic, historical, and clean
+    esriTopoLayer.addTo(map);
+
+    // Layer selector at top right
+    const baseLayers = {
+      "מפה היסטורית / טופוגרפית (Esri Topo)": esriTopoLayer,
+      "מפת דרכים וערים (Esri Streets)": esriStreetLayer,
+      "תצוגת גוגל תקנית (Google)": googleRoadsLayer,
+      "מפה קלאסית (OSM Open)": osmFrLayer
+    };
+    L.control.layers(baseLayers, null, { position: 'topright' }).addTo(map);
+
+    // Marker Layer Group
+    const markersLayer = L.layerGroup().addTo(map);
+    const markerMap = new Map(); // id -> leaflet marker
+
+    // Colors mapping
+    function getRegionPinClass(scholar) {
+      if (scholar.isPillar) return 'pin-pillar';
+      switch (scholar.region) {
+        case 'ספרד וצפון אפריקה': return 'pin-spain';
+        case 'צרפת': return 'pin-france';
+        case 'אשכנז': return 'pin-ashkenaz';
+        case 'פרובנס': return 'pin-provence';
+        case 'איטליה והמזרח': return 'pin-italy-east';
+        default: return 'pin-spain';
+      }
+    }
+
+    function getRegionBadgeStyle(scholar) {
+      if (scholar.isPillar) {
+        return 'bg-amber-100 text-amber-900 border border-amber-300';
+      }
+      switch (scholar.region) {
+        case 'ספרד וצפון אפריקה': return 'bg-rose-100 text-rose-800 border border-rose-200';
+        case 'צרפת': return 'bg-blue-100 text-blue-800 border border-blue-200';
+        case 'אשכנז': return 'bg-emerald-100 text-emerald-800 border border-emerald-200';
+        case 'פרובנס': return 'bg-purple-100 text-purple-800 border border-purple-200';
+        case 'איטליה והמזרח': return 'bg-cyan-100 text-cyan-800 border border-cyan-200';
+        default: return 'bg-slate-100 text-slate-800';
+      }
+    }
+
+    function createMarkers(scholars) {
+      markersLayer.clearLayers();
+      markerMap.clear();
+
+      scholars.forEach(scholar => {
+        const pinClass = getRegionPinClass(scholar);
+        const iconLetter = scholar.isPillar ? '👑' : scholar.name.charAt(scholar.name.startsWith('ה') ? 1 : 0);
+
+        const customIcon = L.divIcon({
+          className: 'custom-div-icon',
+          html: `
+            <div class="marker-pin ${pinClass}">
+              <span class="marker-content">${iconLetter}</span>
+            </div>
+          `,
+          iconSize: [38, 38],
+          iconAnchor: [19, 38]
+        });
+
+        const marker = L.marker([scholar.lat, scholar.lng], { icon: customIcon });
+
+        // Tooltip
+        marker.bindTooltip(`
+          <div class="text-right font-sans">
+            <div class="font-bold text-amber-400 font-serif-heb text-sm">${scholar.name}</div>
+            <div class="text-[11px] text-slate-200">${scholar.years} | ${scholar.city.split('/')[0]}</div>
+          </div>
+        `, {
+          direction: 'top',
+          offset: [0, -28],
+          className: 'leaflet-tooltip-custom'
+        });
+
+        marker.on('click', () => {
+          selectScholar(scholar, true);
+        });
+
+        marker.addTo(markersLayer);
+        markerMap.set(scholar.id, marker);
+      });
+    }
+
+    let selectedScholar = null;
+
+    function selectScholar(scholar, zoomIn = false) {
+      selectedScholar = scholar;
+
+      // Update sidebar card
+      const emptyPrompt = document.getElementById('emptyDetailPrompt');
+      const card = document.getElementById('scholarCard');
+
+      emptyPrompt.classList.add('hidden');
+      card.classList.remove('hidden');
+
+      const cardBadge = document.getElementById('cardBadge');
+      cardBadge.textContent = scholar.isPillar ? '👑 מעמודי ההוראה' : scholar.region;
+      cardBadge.className = `text-[11px] font-bold px-2.5 py-0.5 rounded-full ${getRegionBadgeStyle(scholar)}`;
+
+      document.getElementById('cardYears').textContent = scholar.years;
+      document.getElementById('cardName').textContent = scholar.name;
+      document.getElementById('cardFullName').textContent = scholar.fullName;
+      document.getElementById('cardCity').textContent = scholar.city;
+      document.getElementById('cardCentury').textContent = scholar.century;
+
+      // Books rendering
+      const booksContainer = document.getElementById('cardBooks');
+      booksContainer.innerHTML = '';
+      scholar.books.forEach(b => {
+        const item = document.createElement('div');
+        item.className = 'p-2.5 rounded-lg bg-slate-50 border border-slate-200/80 hover:bg-amber-50/40 transition';
+        item.innerHTML = `
+          <div class="font-bold text-slate-800 text-xs">${b.title}</div>
+          <div class="text-[11px] text-slate-600 mt-0.5 leading-snug">${b.desc}</div>
+        `;
+        booksContainer.appendChild(item);
+      });
+
+      document.getElementById('cardDescription').textContent = scholar.description;
+      document.getElementById('cardLineage').textContent = scholar.lineage;
+
+      // Switch to detail view tab
+      switchTab('detail');
+
+      // Open sidebar on mobile if closed
+      const sidebar = document.getElementById('sidebar');
+      sidebar.classList.remove('translate-x-full');
+
+      // Highlight active marker
+      markerMap.forEach((m, id) => {
+        const el = m.getElement();
+        if (el) {
+          if (id === scholar.id) {
+            el.classList.add('marker-active');
+          } else {
+            el.classList.remove('marker-active');
+          }
+        }
+      });
+
+      if (zoomIn) {
+        map.flyTo([scholar.lat, scholar.lng], 7, {
+          duration: 1.2
+        });
+      }
+    }
+
+    function renderListView(scholars) {
+      const container = document.getElementById('scholarsListContainer');
+      container.innerHTML = '';
+      document.getElementById('listCounter').textContent = scholars.length;
+
+      if (scholars.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-8 text-slate-400 text-xs">
+            לא נמצאו פוסקים התואמים את החיפוש.
+          </div>
+        `;
+        return;
+      }
+
+      scholars.forEach(s => {
+        const card = document.createElement('div');
+        card.className = 'p-3 rounded-xl border border-slate-200 bg-white hover:border-amber-400 hover:shadow-md cursor-pointer transition text-right group';
+        card.innerHTML = `
+          <div class="flex items-center justify-between gap-1 mb-1">
+            <span class="text-sm font-bold font-serif-heb text-slate-900 group-hover:text-amber-700 transition">${s.name}</span>
+            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full ${getRegionBadgeStyle(s)}">${s.isPillar ? '👑 עמוד הוראה' : s.region}</span>
+          </div>
+          <div class="text-xs text-slate-500 font-medium mb-1">${s.fullName}</div>
+          <div class="flex items-center justify-between text-[11px] text-slate-500 border-t border-slate-100 pt-1.5 mt-1.5">
+            <span>📍 ${s.city.split('/')[0]}</span>
+            <span>📅 ${s.years}</span>
+          </div>
+        `;
+        card.addEventListener('click', () => {
+          selectScholar(s, true);
+        });
+        container.appendChild(card);
+      });
+    }
+
+    let currentRegion = 'all';
+    let searchQuery = '';
+
+    function getFilteredScholars() {
+      return RISHONIM.filter(s => {
+        const matchRegion = (currentRegion === 'all')
+          || (currentRegion === 'pillars' && s.isPillar)
+          || (s.region === currentRegion);
+
+        const q = searchQuery.trim().toLowerCase();
+        const matchSearch = !q
+          || s.name.toLowerCase().includes(q)
+          || s.fullName.toLowerCase().includes(q)
+          || s.city.toLowerCase().includes(q)
+          || s.books.some(b => b.title.toLowerCase().includes(q) || b.desc.toLowerCase().includes(q));
+
+        return matchRegion && matchSearch;
+      });
+    }
+
+    function applyFilters() {
+      const filtered = getFilteredScholars();
+      createMarkers(filtered);
+      renderListView(filtered);
+    }
+
+    // Setup Filter Buttons
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => {
+          b.classList.remove('active', 'bg-slate-900', 'text-white');
+          if (b.dataset.region === 'pillars') {
+            b.className = 'filter-btn px-2.5 py-1 rounded-full font-medium transition bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-300';
+          } else {
+            b.classList.add('text-slate-600');
+          }
+        });
+
+        btn.classList.add('active', 'bg-slate-900', 'text-white');
+        btn.classList.remove('hover:bg-amber-100', 'hover:bg-rose-100', 'hover:bg-blue-100', 'hover:bg-emerald-100', 'hover:bg-purple-100', 'hover:bg-cyan-100');
+
+        currentRegion = btn.dataset.region;
+        applyFilters();
+      });
+    });
+
+    // Search input listener
+    const searchInput = document.getElementById('searchInput');
+    searchInput.addEventListener('input', (e) => {
+      searchQuery = e.target.value;
+      applyFilters();
+    });
+
+    const tabDetailBtn = document.getElementById('tabDetailBtn');
+    const tabListBtn = document.getElementById('tabListBtn');
+    const detailView = document.getElementById('detailView');
+    const listView = document.getElementById('listView');
+
+    function switchTab(tab) {
+      if (tab === 'detail') {
+        detailView.classList.remove('hidden');
+        listView.classList.add('hidden');
+        tabDetailBtn.classList.add('bg-white', 'text-slate-800', 'shadow-xs');
+        tabDetailBtn.classList.remove('text-slate-600');
+        tabListBtn.classList.remove('bg-white', 'text-slate-800', 'shadow-xs');
+        tabListBtn.classList.add('text-slate-600');
+      } else {
+        detailView.classList.add('hidden');
+        listView.classList.remove('hidden');
+        tabListBtn.classList.add('bg-white', 'text-slate-800', 'shadow-xs');
+        tabListBtn.classList.remove('text-slate-600');
+        tabDetailBtn.classList.remove('bg-white', 'text-slate-800', 'shadow-xs');
+        tabDetailBtn.classList.add('text-slate-600');
+      }
+    }
+
+    tabDetailBtn.addEventListener('click', () => switchTab('detail'));
+    tabListBtn.addEventListener('click', () => switchTab('list'));
+
+    // Mobile Sidebar Toggle
+    const toggleListBtn = document.getElementById('toggleListBtn');
+    const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+    const sidebar = document.getElementById('sidebar');
+
+    toggleListBtn.addEventListener('click', () => {
+      sidebar.classList.toggle('translate-x-full');
+      switchTab('list');
+    });
+
+    closeSidebarBtn.addEventListener('click', () => {
+      sidebar.classList.add('translate-x-full');
+    });
+
+    // Reset View Button
+    document.getElementById('resetViewBtn').addEventListener('click', () => {
+      map.flyTo([42.5, 9.5], 5, { duration: 1.0 });
+      markerMap.forEach(m => {
+        const el = m.getElement();
+        if (el) el.classList.remove('marker-active');
+      });
+    });
+
+    // Focus on map button in card
+    document.getElementById('focusOnMapBtn').addEventListener('click', () => {
+      if (selectedScholar) {
+        map.flyTo([selectedScholar.lat, selectedScholar.lng], 8, { duration: 1 });
+        if (window.innerWidth < 768) {
+          sidebar.classList.add('translate-x-full');
+        }
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      map.invalidateSize();
+    });
+
+    window.addEventListener('load', () => {
+      document.getElementById('count-all').textContent = RISHONIM.length;
+      createMarkers(RISHONIM);
+      renderListView(RISHONIM);
+
+      // Force recalculation of container dimensions so tiles appear immediately without grey gaps
+      setTimeout(() => {
+        map.invalidateSize();
+      }, 200);
+
+      // Select default highlighted scholar (הרמב"ם)
+      const defaultScholar = RISHONIM.find(s => s.id === 'rambam');
+      if (defaultScholar) {
+        selectScholar(defaultScholar, false);
+      }
+    });
+  </script>
+</body>
+</html>
